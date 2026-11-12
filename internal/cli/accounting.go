@@ -2,13 +2,38 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/a2dev-fr/abby-cli/internal/api"
 	"github.com/a2dev-fr/abby-cli/internal/output"
 	"github.com/spf13/cobra"
 )
+
+func buildPurchaseEntries(entriesJSON string, defaultCents int64, isPersonal bool, vatID, accountNumber int) ([]api.PurchaseEntryLineDto, int64, error) {
+	if strings.TrimSpace(entriesJSON) != "" {
+		var entries []api.PurchaseEntryLineDto
+		if err := json.Unmarshal([]byte(entriesJSON), &entries); err != nil {
+			return nil, 0, fmt.Errorf("--entries-json invalide: %w", err)
+		}
+		var sum int64
+		for _, e := range entries {
+			sum += e.Amount
+		}
+		return entries, sum, nil
+	}
+	entry := api.PurchaseEntryLineDto{
+		Amount:     defaultCents,
+		IsPersonal: isPersonal,
+		VatID:      vatID,
+	}
+	if accountNumber > 0 {
+		entry.AccountingAccountNumber = accountNumber
+	}
+	return []api.PurchaseEntryLineDto{entry}, defaultCents, nil
+}
 
 func newAccountingCmd() *cobra.Command {
 	accCmd := &cobra.Command{
@@ -191,7 +216,7 @@ func newPurchaseRegisterCmd() *cobra.Command {
 	}
 
 	// 3. create
-	var label, reference, thirdPartyID, valueDate, paymentMethodStr string
+	var label, reference, thirdPartyID, valueDate, paymentMethodStr, entriesJSON string
 	var amountCents int64
 	var amountEuros float64
 	var vatID, accountNumber int
@@ -207,20 +232,19 @@ func newPurchaseRegisterCmd() *cobra.Command {
 			if cents == 0 && amountEuros != 0 {
 				cents = output.EurosToCents(amountEuros)
 			}
-			if cents == 0 {
-				return fmt.Errorf("spécifiez le montant TTC via --amount-cents ou --amount-euros")
-			}
 			if valueDate == "" {
 				valueDate = time.Now().Format("2006-01-02")
 			}
 
-			entry := api.PurchaseEntryLineDto{
-				Amount:     cents,
-				IsPersonal: isPersonal,
-				VatID:      vatID,
+			entries, totalEntriesCents, err := buildPurchaseEntries(entriesJSON, cents, isPersonal, vatID, accountNumber)
+			if err != nil {
+				return err
 			}
-			if accountNumber > 0 {
-				entry.AccountingAccountNumber = accountNumber
+			if cents == 0 {
+				cents = totalEntriesCents
+			}
+			if cents == 0 {
+				return fmt.Errorf("spécifiez le montant TTC via --amount-cents, --amount-euros ou --entries-json")
 			}
 
 			var pm any = paymentMethodStr
@@ -235,7 +259,7 @@ func newPurchaseRegisterCmd() *cobra.Command {
 				ThirdPartyID:      thirdPartyID,
 				Label:             label,
 				Reference:         reference,
-				Entries:           []api.PurchaseEntryLineDto{entry},
+				Entries:           entries,
 			}
 
 			client, printer, err := getClientAndPrinter()
@@ -268,10 +292,66 @@ func newPurchaseRegisterCmd() *cobra.Command {
 	createCmd.Flags().IntVar(&vatID, "vat-id", 1, "ID TVA (1=20%, 2=10%, 3=5.5%, 4=2.1%, 5=0% HT, 6=8.5% DOM, 7=UE, 8=Hors UE)")
 	createCmd.Flags().IntVar(&accountNumber, "account-number", 0, "Numéro de compte comptable optionnel (ex: 606300, 622600)")
 	createCmd.Flags().BoolVar(&isPersonal, "personal", false, "Marquer comme dépense personnelle")
+	createCmd.Flags().StringVar(&entriesJSON, "entries-json", "", "Tableau JSON de ventilation multi-lignes ([]PurchaseEntryLineDto)")
 	createCmd.Flags().StringVar(&paymentMethodStr, "payment-method", "BANK_CARD", "Mode de paiement (BANK_CARD, BANK_TRANSFER, CASH, CHECK, OTHER)")
 	createCmd.Flags().BoolVar(&useV2, "v2", false, "Utiliser l'endpoint historique /v2/purchaseRegister au lieu de /v3/purchaseRegister")
 
-	// 4. delete
+	// 4. update
+	updateCmd := &cobra.Command{
+		Use:   "update <purchaseId>",
+		Short: "Mettre à jour une écriture du Livre des achats (PUT /v3/purchaseRegister/{id})",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if label == "" || thirdPartyID == "" {
+				return fmt.Errorf("--label et --provider-id sont obligatoires")
+			}
+			cents := amountCents
+			if cents == 0 && amountEuros != 0 {
+				cents = output.EurosToCents(amountEuros)
+			}
+			if valueDate == "" {
+				valueDate = time.Now().Format("2006-01-02")
+			}
+			entries, totalEntriesCents, err := buildPurchaseEntries(entriesJSON, cents, isPersonal, vatID, accountNumber)
+			if err != nil {
+				return err
+			}
+			if cents == 0 {
+				cents = totalEntriesCents
+			}
+			dto := api.CreatePurchaseRegisterDto{
+				ValueDate:         valueDate,
+				PaymentMethodUsed: paymentMethodStr,
+				Amount:            cents,
+				ThirdPartyID:      thirdPartyID,
+				Label:             label,
+				Reference:         reference,
+				Entries:           entries,
+			}
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			item, err := client.UpdatePurchaseRegisterV3(context.Background(), args[0], dto)
+			if err != nil {
+				return err
+			}
+			return printer.PrintJSON(item)
+		},
+	}
+	updateCmd.Flags().StringVar(&label, "label", "", "Libellé de l'achat (obligatoire)")
+	updateCmd.Flags().StringVar(&thirdPartyID, "provider-id", "", "ID du fournisseur (obligatoire)")
+	updateCmd.Flags().StringVar(&reference, "reference", "", "Référence")
+	updateCmd.Flags().StringVar(&valueDate, "date", "", "Date YYYY-MM-DD")
+	updateCmd.Flags().Int64Var(&amountCents, "amount-cents", 0, "Montant TTC en centimes")
+	updateCmd.Flags().Float64Var(&amountEuros, "amount-euros", 0, "Montant TTC en euros")
+	updateCmd.Flags().IntVar(&vatID, "vat-id", 1, "ID TVA (1..8)")
+	updateCmd.Flags().IntVar(&accountNumber, "account-number", 0, "Numéro de compte comptable")
+	updateCmd.Flags().BoolVar(&isPersonal, "personal", false, "Dépense personnelle")
+	updateCmd.Flags().StringVar(&entriesJSON, "entries-json", "", "Tableau JSON de ventilation multi-lignes")
+	updateCmd.Flags().StringVar(&paymentMethodStr, "payment-method", "BANK_CARD", "Mode de paiement")
+
+	// 5. delete
 	var deleteV2 bool
 	deleteCmd := &cobra.Command{
 		Use:   "delete <purchaseId>",
@@ -299,7 +379,7 @@ func newPurchaseRegisterCmd() *cobra.Command {
 	}
 	deleteCmd.Flags().BoolVar(&deleteV2, "v2", false, "Utiliser DELETE /v2/purchaseRegister/{id}")
 
-	purchasesCmd.AddCommand(listCmd, getCmd, createCmd, deleteCmd)
+	purchasesCmd.AddCommand(listCmd, getCmd, createCmd, updateCmd, deleteCmd)
 	return purchasesCmd
 }
 
@@ -373,6 +453,43 @@ func newProvidersCmd() *cobra.Command {
 	createCmd.Flags().StringVar(&country, "country", "FR", "Code pays")
 	createCmd.Flags().StringVar(&phone, "phone", "", "Téléphone")
 
+	updateProviderCmd := &cobra.Command{
+		Use:   "update <providerId>",
+		Short: "Mettre à jour un fournisseur (PUT /provider/{id})",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if name == "" {
+				return fmt.Errorf("--name est obligatoire")
+			}
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			pr, err := client.UpdateProvider(context.Background(), args[0], api.ProviderDto{
+				Name:      name,
+				Siret:     siret,
+				VatNumber: vatNumber,
+				Address:   address,
+				ZipCode:   zip,
+				City:      city,
+				Country:   country,
+				Phone:     phone,
+			})
+			if err != nil {
+				return err
+			}
+			return printer.PrintJSON(pr)
+		},
+	}
+	updateProviderCmd.Flags().StringVar(&name, "name", "", "Nom du fournisseur (obligatoire)")
+	updateProviderCmd.Flags().StringVar(&siret, "siret", "", "SIRET du fournisseur")
+	updateProviderCmd.Flags().StringVar(&vatNumber, "vat-number", "", "Numéro de TVA")
+	updateProviderCmd.Flags().StringVar(&address, "address", "", "Adresse")
+	updateProviderCmd.Flags().StringVar(&zip, "zip", "", "Code postal")
+	updateProviderCmd.Flags().StringVar(&city, "city", "", "Ville")
+	updateProviderCmd.Flags().StringVar(&country, "country", "FR", "Code pays")
+	updateProviderCmd.Flags().StringVar(&phone, "phone", "", "Téléphone")
+
 	deleteCmd := &cobra.Command{
 		Use:   "delete <providerId>",
 		Short: "Supprimer un fournisseur (DELETE /provider/{id})",
@@ -393,7 +510,7 @@ func newProvidersCmd() *cobra.Command {
 		},
 	}
 
-	providersCmd.AddCommand(listCmd, createCmd, deleteCmd)
+	providersCmd.AddCommand(listCmd, createCmd, updateProviderCmd, deleteCmd)
 	return providersCmd
 }
 

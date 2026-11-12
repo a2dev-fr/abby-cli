@@ -357,11 +357,85 @@ func newEstimatesCmd() *cobra.Command {
 	}
 	downloadCmd.Flags().StringVarP(&outPDF, "out", "f", "", "Chemin du fichier PDF")
 
+	// 11. update-info
+	var headerNote, footerNote, terms, mediator, otherMethod string
+	var paymentMethods []string
+	updateInfoCmd := &cobra.Command{
+		Use:   "update-info <estimateId>",
+		Short: "Mettre à jour les informations générales du devis (notes, CGV, moyens de paiement) (PATCH /v2/billing/estimate/{estimateId}/general-informations)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			dto := api.UpdateGeneralInformationsDto{
+				HeaderNote:                      headerNote,
+				FooterNote:                      footerNote,
+				GeneralTermsAndConditionsOfSale: terms,
+				MentionMediator:                 mediator,
+				OtherPaymentMethod:              otherMethod,
+			}
+			for _, m := range paymentMethods {
+				dto.PaymentMethods = append(dto.PaymentMethods, api.PaymentMethod(m))
+			}
+			doc, err := client.UpdateEstimateGeneralInfo(context.Background(), args[0], dto)
+			if err != nil {
+				return err
+			}
+			return printer.PrintBillingDocument(doc)
+		},
+	}
+	updateInfoCmd.Flags().StringVar(&headerNote, "header-note", "", "Note d'en-tête")
+	updateInfoCmd.Flags().StringVar(&footerNote, "footer-note", "", "Note de pied de page")
+	updateInfoCmd.Flags().StringVar(&terms, "terms", "", "Conditions générales de vente")
+	updateInfoCmd.Flags().StringVar(&mediator, "mediator", "", "Mention médiateur")
+	updateInfoCmd.Flags().StringSliceVar(&paymentMethods, "payment-methods", nil, "Moyens de paiement acceptés (transfer, credit_card, cheque, cash, direct_debit, other)")
+	updateInfoCmd.Flags().StringVar(&otherMethod, "other-payment-method", "", "Précision si moyen de paiement = other")
+
+	// 12. send-email
+	var emails []string
+	var subject, content string
+	var inCopy bool
+	sendEmailCmd := &cobra.Command{
+		Use:   "send-email <estimateId>",
+		Short: "Envoyer le devis par email au client (POST /v2/billing/{billingId}/send-by-email)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(emails) == 0 || subject == "" || content == "" {
+				return fmt.Errorf("--to, --subject et --content sont obligatoires")
+			}
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			err = client.SendBillingByEmail(context.Background(), args[0], api.SendBillingByEmailDto{
+				Emails:  emails,
+				Subject: subject,
+				Content: content,
+				InCopy:  inCopy,
+			})
+			if err != nil {
+				return err
+			}
+			if printer.Format == output.FormatJSON {
+				return printer.PrintJSON(map[string]any{"sent": true, "estimateId": args[0], "emails": emails})
+			}
+			fmt.Printf("Devis %s envoyé par email à %v.\n", args[0], emails)
+			return nil
+		},
+	}
+	sendEmailCmd.Flags().StringSliceVar(&emails, "to", nil, "Destinataire(s) email")
+	sendEmailCmd.Flags().StringVar(&subject, "subject", "", "Objet de l'email")
+	sendEmailCmd.Flags().StringVar(&content, "content", "", "Corps de l'email")
+	sendEmailCmd.Flags().BoolVar(&inCopy, "copy", false, "Recevoir une copie")
+
 	estimatesCmd.AddCommand(
 		listCmd,
 		getCmd,
 		createCmd,
 		setLinesCmd,
+		updateInfoCmd,
 		updateTimelineCmd,
 		finalizeCmd,
 		signCmd,
@@ -371,6 +445,7 @@ func newEstimatesCmd() *cobra.Command {
 		createAdvanceCmd,
 		createFinalInvoiceCmd,
 		downloadCmd,
+		sendEmailCmd,
 	)
 	return estimatesCmd
 }

@@ -52,19 +52,28 @@ Ce skill décrit le pilotage des devis (`estimate`) et bons de commande (`purcha
 ```
 *(Ajoutez `--purchase-order` pour créer un bon de commande au lieu d'un devis).*
 
-### 3. Définir la date d'expiration (`update-timeline`)
+### 3. Définir la date d'expiration (`update-timeline`) et les informations (`update-info`)
 ```powershell
 ./bin/abby.exe estimates update-timeline <estimateId> `
   --emitted-at "2026-11-12" `
   --expired-at "2026-12-12" `
   --payment-delay "thirty_days" `
   -o json
+
+./bin/abby.exe estimates update-info <estimateId> `
+  --title "Refonte E-Commerce V2" `
+  --header-note "Devis valable 30 jours" `
+  --footer-note "Acompte de 30% à la signature" `
+  -o json
 ```
 
-### 4. Finaliser, Signer ou Refuser un devis
+### 4. Finaliser, Envoyer par email, Signer ou Refuser un devis
 ```powershell
 # Finaliser le devis (après confirmation utilisateur)
 ./bin/abby.exe estimates finalize <estimateId> -o json
+
+# Envoyer le devis par email (après confirmation utilisateur)
+./bin/abby.exe estimates send-email <estimateId> --to "client@exemple.fr" -o json
 
 # Marquer comme signé par le client
 ./bin/abby.exe estimates sign <estimateId> -o json
@@ -122,4 +131,7 @@ Vous pouvez également gérer les opportunités du pipeline CRM (`/v2/opportunit
 
 # Créer une opportunité pour un client
 ./bin/abby.exe opportunities create --name "Refonte E-Commerce" --customer-id <customerId> --category-id <categoryId> --amount-cents 200000 --due-date "2026-12-31" -o json
+
+# Mettre à jour une opportunité existante (changer de colonne, de montant ou de date)
+./bin/abby.exe opportunities update <opportunityId> --name "Refonte E-Commerce Signée" --category-id <newCategoryId> --amount-cents 235000 -o json
 ```

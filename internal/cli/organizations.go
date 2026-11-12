@@ -238,7 +238,47 @@ func newOrganizationsCmd() *cobra.Command {
 		},
 	}
 
-	// 7. set-default-contact
+	// 7. add-contact
+	var cFirstname, cLastname, cEmail, cPhone, cJobTitle string
+	addContactCmd := &cobra.Command{
+		Use:   "add-contact <organizationId>",
+		Short: "Ajouter un contact à une entreprise (POST /organization/{id}/contact)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cFirstname == "" || cLastname == "" {
+				return fmt.Errorf("--firstname et --lastname sont obligatoires")
+			}
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			dto := api.CreateContactDto{
+				Firstname: cFirstname,
+				Lastname:  cLastname,
+				Phone:     cPhone,
+				JobTitle:  cJobTitle,
+			}
+			if cEmail != "" {
+				dto.Emails = []string{cEmail}
+			}
+			c, err := client.CreateOrganizationContact(context.Background(), args[0], dto)
+			if err != nil {
+				return err
+			}
+			if printer.Format == output.FormatJSON {
+				return printer.PrintJSON(c)
+			}
+			fmt.Printf("Contact d'entreprise créé ! ID: %s (%s %s)\n", c.ID, c.Firstname, c.Lastname)
+			return nil
+		},
+	}
+	addContactCmd.Flags().StringVar(&cFirstname, "firstname", "", "Prénom du contact (obligatoire)")
+	addContactCmd.Flags().StringVar(&cLastname, "lastname", "", "Nom du contact (obligatoire)")
+	addContactCmd.Flags().StringVar(&cEmail, "email", "", "Email du contact")
+	addContactCmd.Flags().StringVar(&cPhone, "phone", "", "Téléphone du contact")
+	addContactCmd.Flags().StringVar(&cJobTitle, "job-title", "", "Fonction / Poste")
+
+	// 8. set-default-contact
 	setDefaultContactCmd := &cobra.Command{
 		Use:   "set-default-contact <organizationId> <contactId>",
 		Short: "Définir le contact par défaut d'une entreprise (PATCH /organization/{organizationId}/default-contact)",
@@ -263,6 +303,6 @@ func newOrganizationsCmd() *cobra.Command {
 		},
 	}
 
-	orgsCmd.AddCommand(listCmd, getCmd, createCmd, updateCmd, deleteCmd, orgContactsCmd, setDefaultContactCmd)
+	orgsCmd.AddCommand(listCmd, getCmd, createCmd, updateCmd, deleteCmd, orgContactsCmd, addContactCmd, setDefaultContactCmd)
 	return orgsCmd
 }

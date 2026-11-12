@@ -55,6 +55,7 @@ c:\code\abby-cli\
     ├── rules/
     │   └── abby-conventions.md      # Règles permanentes (centimes, timestamps secondes, confirmation avant finalize)
     └── skills/
+        ├── abby-cli/SKILL.md          # Skill Maître d'orchestration (12 groupes CLI + flux complets + endpoints avancés raw)
         ├── abby-auth/SKILL.md         # Skill Authentification & Diagnostic (/v2/company/me)
         ├── abby-clients/SKILL.md      # Skill Clients Particuliers (Contacts) & Entreprises (Organizations)
         ├── abby-factures/SKILL.md     # Skill Cycle de vie des Factures (brouillon -> lignes -> finalisation -> paiement)

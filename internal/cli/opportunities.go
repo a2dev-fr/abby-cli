@@ -89,6 +89,41 @@ func newOpportunitiesCmd() *cobra.Command {
 	createCmd.Flags().StringVar(&customerID, "customer-id", "", "ID client (obligatoire)")
 	createCmd.Flags().StringVar(&categoryID, "category-id", "", "ID catégorie / colonne (obligatoire)")
 
+	updateCmd := &cobra.Command{
+		Use:   "update <opportunityId>",
+		Short: "Mettre à jour une opportunité commerciale (PUT /v2/opportunity/{id})",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cents := amountCents
+			if cents == 0 && amountEuros != 0 {
+				cents = output.EurosToCents(amountEuros)
+			}
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			raw, err := client.UpdateOpportunity(context.Background(), args[0], api.OpportunityDto{
+				Name:        name,
+				Description: description,
+				DueDate:     dueDate,
+				Amount:      cents,
+				CustomerID:  customerID,
+				CategoryID:  categoryID,
+			})
+			if err != nil {
+				return err
+			}
+			return printer.PrintJSON(raw)
+		},
+	}
+	updateCmd.Flags().StringVar(&name, "name", "", "Titre de l'opportunité")
+	updateCmd.Flags().StringVar(&description, "description", "", "Description")
+	updateCmd.Flags().StringVar(&dueDate, "due-date", "", "Date d'échéance YYYY-MM-DD")
+	updateCmd.Flags().Int64Var(&amountCents, "amount-cents", 0, "Montant estimé en centimes")
+	updateCmd.Flags().Float64Var(&amountEuros, "amount-euros", 0, "Montant estimé en euros")
+	updateCmd.Flags().StringVar(&customerID, "customer-id", "", "ID client")
+	updateCmd.Flags().StringVar(&categoryID, "category-id", "", "ID catégorie")
+
 	deleteCmd := &cobra.Command{
 		Use:   "delete <opportunityId>",
 		Short: "Supprimer une opportunité commerciale (DELETE /v2/opportunity/{id})",
@@ -105,6 +140,6 @@ func newOpportunitiesCmd() *cobra.Command {
 		},
 	}
 
-	oppCmd.AddCommand(categoriesCmd, getCmd, createCmd, deleteCmd)
+	oppCmd.AddCommand(categoriesCmd, getCmd, createCmd, updateCmd, deleteCmd)
 	return oppCmd
 }

@@ -428,6 +428,60 @@ Si aucun montant (--amount-cents ou --amount-euros) n'est fourni, le CLI r√©cup√
 	sendEmailCmd.Flags().StringVar(&content, "content", "", "Corps de l'email")
 	sendEmailCmd.Flags().BoolVar(&inCopy, "copy", false, "Recevoir une copie")
 
+	// 13. set-locale
+	setLocaleCmd := &cobra.Command{
+		Use:   "set-locale <invoiceId> <locale>",
+		Short: "Changer la langue de la facture (ex: fr, en) (PUT /v2/billing/invoice/{invoiceId}/locale)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			doc, err := client.UpdateInvoiceLocale(context.Background(), args[0], args[1])
+			if err != nil {
+				return err
+			}
+			return printer.PrintBillingDocument(doc)
+		},
+	}
+
+	// 14. set-currency
+	setCurrencyCmd := &cobra.Command{
+		Use:   "set-currency <invoiceId> <currencyCode>",
+		Short: "Changer la devise de la facture (ex: EUR, USD, GBP, CHF) (PUT /v2/billing/invoice/{invoiceId}/currency)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			doc, err := client.UpdateInvoiceCurrency(context.Background(), args[0], args[1])
+			if err != nil {
+				return err
+			}
+			return printer.PrintBillingDocument(doc)
+		},
+	}
+
+	// 15. activate-online-payment
+	activateOnlinePaymentCmd := &cobra.Command{
+		Use:   "activate-online-payment <invoiceId>",
+		Short: "Activer le paiement en ligne sur une facture finalis√©e (PATCH /v2/billing/invoice/{invoiceId}/activate-online-payment)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, printer, err := getClientAndPrinter()
+			if err != nil {
+				return err
+			}
+			doc, err := client.ActivateInvoiceOnlinePayment(context.Background(), args[0])
+			if err != nil {
+				return err
+			}
+			return printer.PrintBillingDocument(doc)
+		},
+	}
+
 	invoicesCmd.AddCommand(
 		listCmd,
 		getCmd,
@@ -441,6 +495,9 @@ Si aucun montant (--amount-cents ou --amount-euros) n'est fourni, le CLI r√©cup√
 		cancelCmd,
 		downloadCmd,
 		sendEmailCmd,
+		setLocaleCmd,
+		setCurrencyCmd,
+		activateOnlinePaymentCmd,
 	)
 	return invoicesCmd
 }

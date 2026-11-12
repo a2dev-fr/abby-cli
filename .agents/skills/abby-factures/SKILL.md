@@ -57,31 +57,43 @@ Ce skill couvre le cycle de vie complet d'une facture sur l'API Abby v2 (`https:
 ```
 *(Astuce : `--unit-price-cents 35000` équivaut à `--unit-price-euros 350` soit 350,00 € HT).*
 
-### 3. Définir plusieurs lignes sur une facture brouillon (`set-lines`)
-Pour une facture multi-lignes, passez un tableau JSON via `--lines-json` ou `--lines-file` :
+### 3. Définir plusieurs lignes, lier un produit du catalogue (`productId`) et appliquer des remises (`discount`)
+Pour une facture multi-lignes ou avec remises (par ligne ou globale), passez un objet `UpdateBillingLinesDto` ou un tableau via `--lines-json` ou `--lines-file` :
 ```powershell
-./bin/abby.exe invoices set-lines <invoiceId> --lines-json '[
-  {
-    "designation": "Audit architecture Go",
-    "description": "Revue du code et conception CLI",
-    "unitPrice": 75000,
-    "quantity": 1,
-    "quantityUnit": "fixed_rate",
-    "type": "service_delivery",
-    "vatCode": "FR_2000"
-  },
-  {
-    "designation": "Hébergement annuel",
-    "unitPrice": 12000,
-    "quantity": 12,
-    "quantityUnit": "month",
-    "type": "service_delivery",
-    "vatCode": "FR_2000"
+./bin/abby.exe invoices set-lines <invoiceId> --lines-json '{
+  "lines": [
+    {
+      "productId": "<optional-catalog-product-uuid>",
+      "designation": "Audit architecture Go",
+      "description": "Revue du code et conception CLI",
+      "unitPrice": 75000,
+      "quantity": 1,
+      "quantityUnit": "fixed_rate",
+      "type": "service_delivery",
+      "vatCode": "FR_2000",
+      "discount": {
+        "mode": "percentage",
+        "amount": 1000
+      }
+    },
+    {
+      "designation": "Hébergement annuel",
+      "unitPrice": 12000,
+      "quantity": 12,
+      "quantityUnit": "month",
+      "type": "service_delivery",
+      "vatCode": "FR_2000"
+    }
+  ],
+  "discount": {
+    "mode": "amount",
+    "amount": 5000
   }
-]' -o json
+}' -o json
 ```
+*(Note sur `discount` : `amount: 1000` en mode `percentage` = 10% ; `amount: 5000` en mode `amount` = 50,00 €).*
 
-### 4. Modifier l'échéancier (`update-timeline`) et les informations générales (`update-info`)
+### 4. Modifier l'échéancier (`update-timeline`), les informations générales (`update-info`), la langue (`set-locale`) et la devise (`set-currency`)
 Les dates sont converties automatiquement en **timestamps Unix en secondes** :
 ```powershell
 ./bin/abby.exe invoices update-timeline <invoiceId> `
@@ -95,14 +107,21 @@ Les dates sont converties automatiquement en **timestamps Unix en secondes** :
   --footer-note "Merci pour votre confiance." `
   --payment-methods "transfer,credit_card" `
   -o json
+
+# Changer la langue (fr, en) ou la devise (EUR, USD, CHF, GBP)
+./bin/abby.exe invoices set-locale <invoiceId> en -o json
+./bin/abby.exe invoices set-currency <invoiceId> EUR -o json
 ```
 
-### 5. Finaliser une facture (`finalize`) — ⚠️ Action irréversible
+### 5. Finaliser une facture (`finalize`) & Activer le paiement en ligne (`activate-online-payment`) — ⚠️ Action irréversible
 Avant de finaliser :
 1. Vérifiez avec `./bin/abby.exe invoices get <invoiceId> -o json` que `"finalizable": true` et que `"finalizeRequirements"` est vide.
 2. Demandez confirmation à l'utilisateur en lui indiquant le client et le montant Total HT / TTC.
 ```powershell
 ./bin/abby.exe invoices finalize <invoiceId> -o json
+
+# Optionnel : Activer le lien de paiement en ligne (Stripe/Abby) sur la facture finalisée
+./bin/abby.exe invoices activate-online-payment <invoiceId> -o json
 ```
 Une fois finalisée, la facture reçoit son numéro définitif (ex: `FA-2026-0042`) et ne peut plus être modifiée.
 

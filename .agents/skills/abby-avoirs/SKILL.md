@@ -48,7 +48,7 @@ Ce skill décrit la création et la gestion des avoirs (`asset`) sur l'API Abby 
   -o json
 ```
 
-### 4. Modifier les lignes d'un avoir brouillon (`set-lines`)
+### 4. Modifier les lignes, notes et dates d'un avoir brouillon (`set-lines`, `update-info`, `update-timeline`)
 ```powershell
 ./bin/abby.exe assets set-lines <assetId> `
   --designation "Remboursement partiel prestation" `
@@ -56,11 +56,15 @@ Ce skill décrit la création et la gestion des avoirs (`asset`) sur l'API Abby 
   --quantity 1 `
   --vat "FR_2000" `
   -o json
+
+./bin/abby.exe assets update-info <assetId> --header-note "Avoir sur facture FA-2026-001" -o json
+./bin/abby.exe assets update-timeline <assetId> --emitted-at "today" --payment-delay "at_reception" -o json
 ```
 
-### 5. Finaliser et télécharger l'avoir
+### 5. Finaliser, télécharger et envoyer l'avoir par email
 Demandez toujours confirmation à l'utilisateur avant de finaliser l'avoir :
 ```powershell
 ./bin/abby.exe assets finalize <assetId> -o json
 ./bin/abby.exe assets download <assetId> --out "avoir.pdf"
+./bin/abby.exe assets send-email <assetId> --to "client@example.com" --subject "Votre avoir" --content "<p>Veuillez trouver ci-joint votre avoir.</p>"
 ```

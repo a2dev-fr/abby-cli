@@ -96,3 +96,23 @@ func TestRootCmd_AuthLifecycle(t *testing.T) {
 		t.Fatalf("auth clear err: %v", err)
 	}
 }
+
+func TestBuildPurchaseEntries(t *testing.T) {
+	// 1. Ventilation multi-taux JSON
+	entries, total, err := buildPurchaseEntries(`[{"amount":12000,"vatId":1,"accountingAccountNumber":606300},{"amount":5500,"vatId":2,"accountingAccountNumber":625600}]`, 0, false, 0, 0)
+	if err != nil {
+		t.Fatalf("buildPurchaseEntries JSON err: %v", err)
+	}
+	if len(entries) != 2 || total != 17500 || entries[0].Amount != 12000 || entries[1].AccountingAccountNumber != 625600 {
+		t.Errorf("entries JSON inattendues: %+v (total=%d)", entries, total)
+	}
+
+	// 2. Flag unitaire en centimes
+	single, totalSingle, err := buildPurchaseEntries("", 4999, false, 1, 606300)
+	if err != nil {
+		t.Fatalf("buildPurchaseEntries unitaire err: %v", err)
+	}
+	if len(single) != 1 || totalSingle != 4999 || single[0].Amount != 4999 || single[0].VatID != 1 {
+		t.Errorf("entry unitaire inattendue: %+v (total=%d)", single, totalSingle)
+	}
+}

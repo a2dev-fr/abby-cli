@@ -51,6 +51,9 @@ Pour une entreprise française, renseignez autant que possible le SIRET et l'adr
 # Lister les contacts rattachés à l'organisation
 ./bin/abby.exe orgs contacts <organizationId> -o json
 
+# Ajouter un contact au sein d'une organisation (POST /organization/{id}/contact)
+./bin/abby.exe orgs add-contact <organizationId> --firstname "Marie" --lastname "Curie" --email "marie@dupont.fr" --job-title "Directrice Financière" -o json
+
 # Définir le contact par défaut d'une organisation
 ./bin/abby.exe orgs set-default-contact <organizationId> <contactId> -o json
 

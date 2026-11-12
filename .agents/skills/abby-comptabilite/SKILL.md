@@ -51,7 +51,7 @@ Permet d'enregistrer ou de supprimer une recette manuelle dans le **Livre des re
 ./bin/abby.exe accounting providers list --search "OVH" -o json
 ```
 
-### Créer un fournisseur (`POST /provider`)
+### Créer ou mettre à jour un fournisseur (`POST /provider`, `PUT /provider/{id}`)
 ```powershell
 ./bin/abby.exe accounting providers create `
   --name "OVHcloud SAS" `
@@ -62,6 +62,8 @@ Permet d'enregistrer ou de supprimer une recette manuelle dans le **Livre des re
   --city "Roubaix" `
   --country "FR" `
   -o json
+
+./bin/abby.exe accounting providers update <providerId> --name "OVHcloud SAS" --siret "42476141900045" -o json
 ```
 
 ### Supprimer un fournisseur (`DELETE /provider/{id}`)
@@ -102,6 +104,23 @@ Gère les dépenses fournisseurs sur `/v3/purchaseRegister` (et `/v2/purchaseReg
 ```
 - `--amount-cents` (ou `--amount-euros`) : Montant **TTC** en centimes (utilisez un montant négatif pour un remboursement).
 - `--vat-id` : `1` = 20%, `2` = 10%, `3` = 5,5%, `4` = 2,1%, `5` = 0% HT, `6` = 8,5% DOM, `7` = UE (autoliquidation), `8` = Hors UE.
+
+### Ventilation multi-taux TVA ou multi-comptes (`--entries-json`) et mise à jour (`update`)
+Lorsqu'une même facture d'achat comporte plusieurs taux de TVA (ex: restauration 10% + 20%) ou une part personnelle (`isPersonal: true`), ventilez-la avec `--entries-json` :
+```powershell
+./bin/abby.exe accounting purchases create `
+  --provider-id <providerId> `
+  --label "Note de frais Restaurant & Déplacement" `
+  --date "2026-11-12" `
+  --entries-json '[
+    {"amount": 3300, "isPersonal": false, "vatId": 2, "accountingAccountNumber": 625600},
+    {"amount": 1200, "isPersonal": false, "vatId": 1, "accountingAccountNumber": 625100}
+  ]' `
+  -o json
+
+# Mettre à jour un achat existant (PUT /v3/purchaseRegister/{id})
+./bin/abby.exe accounting purchases update <purchaseId> --provider-id <providerId> --label "Libellé corrigé" --amount-cents 4500 --vat-id 1 -o json
+```
 
 ### Supprimer un achat (`DELETE /v3/purchaseRegister/{id}`)
 ```powershell
