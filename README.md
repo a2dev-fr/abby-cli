@@ -23,8 +23,11 @@ c:\code\abby-cli\
 │   │   ├── organizations.go         # Service Clients Professionnels (/organizations, /organization/{id})
 │   │   ├── billings.go              # Service Billing transverse (/v2/billings, lignes, finalize, PDF, email, archive)
 │   │   ├── invoices.go              # Service Factures (/v2/billing/invoice/*, reconciliate/paid, mark-as-unpaid, cancel)
-│   │   ├── estimates.go             # Service Devis & Acomptes (/v2/billing/estimate/*, sign, advance, final-invoice)
-│   │   └── assets.go                # Service Avoirs (/v2/billing/asset/*)
+│   │   ├── estimates.go             # Service Devis & Acomptes (/v2/billing/estimate/*, /v2/billing/advance/*)
+│   │   ├── assets.go                # Service Avoirs (/v2/billing/asset/*)
+│   │   ├── catalog.go               # Service Catalogue Produits (/v2/catalog, /v2/catalog/product/*)
+│   │   ├── accounting.go            # Service Comptabilité (/incomeBook, /v3/purchaseRegister, /providers, /v2/accounting-accounts)
+│   │   └── opportunities.go         # Service CRM / Opportunités (/v2/opportunity/*)
 │   ├── output/
 │   │   └── printer.go               # Affichage double mode : Table (humain) ou JSON (agent IA), conversions € <-> centimes
 │   └── cli/
@@ -34,17 +37,24 @@ c:\code\abby-cli\
 │       ├── organizations.go         # Sous-commandes `abby orgs`
 │       ├── invoices.go              # Sous-commandes `abby invoices`
 │       ├── estimates.go             # Sous-commandes `abby estimates`
+│       ├── advances.go              # Sous-commandes `abby advances`
 │       ├── assets.go                # Sous-commandes `abby assets`
-│       └── billings.go              # Sous-commandes `abby billings`
+│       ├── billings.go              # Sous-commandes `abby billings`
+│       ├── catalog.go               # Sous-commandes `abby catalog`
+│       ├── accounting.go            # Sous-commandes `abby accounting` (incomes, purchases, providers, accounts, transaction)
+│       ├── opportunities.go         # Sous-commandes `abby opportunities`
+│       └── raw.go                   # Sous-commande `abby raw <METHOD> <PATH>`
 └── .agents/
     ├── rules/
     │   └── abby-conventions.md      # Règles permanentes (centimes, timestamps secondes, confirmation avant finalize)
     └── skills/
-        ├── abby-auth/SKILL.md       # Skill Authentification & Diagnostic (/v2/company/me)
-        ├── abby-clients/SKILL.md    # Skill Clients Particuliers (Contacts) & Entreprises (Organizations)
-        ├── abby-factures/SKILL.md   # Skill Cycle de vie des Factures (brouillon -> lignes -> finalisation -> paiement)
-        ├── abby-devis/SKILL.md      # Skill Devis, Signatures, Factures d'acompte & Factures de solde
-        └── abby-avoirs/SKILL.md     # Skill Avoirs & Annulations de factures
+        ├── abby-auth/SKILL.md         # Skill Authentification & Diagnostic (/v2/company/me)
+        ├── abby-clients/SKILL.md      # Skill Clients Particuliers (Contacts) & Entreprises (Organizations)
+        ├── abby-factures/SKILL.md     # Skill Cycle de vie des Factures (brouillon -> lignes -> finalisation -> paiement)
+        ├── abby-devis/SKILL.md        # Skill Devis, Signatures, Factures d'acompte, Factures de solde & CRM
+        ├── abby-avoirs/SKILL.md       # Skill Avoirs & Annulations de factures
+        ├── abby-catalogue/SKILL.md    # Skill Catalogue de produits et services (/v2/catalog)
+        └── abby-comptabilite/SKILL.md # Skill Comptabilité (Livre des recettes, Livre des achats, Fournisseurs, Plan comptable)
 ```
 
 ---
@@ -125,4 +135,33 @@ $env:ABBY_API_KEY = "suk-votre_cle_api"
 
 # Ou créer un avoir en brouillon à partir d'une facture pour l'éditer avant finalisation
 ./bin/abby.exe assets create-from-invoice <invoiceId>
+```
+
+### Catalogue Produits (`catalog`)
+```powershell
+# Lister ou chercher des produits
+./bin/abby.exe catalog list --search "Développement"
+
+# Créer un produit / prestation dans le catalogue (350,00 € HT = 35000 centimes)
+./bin/abby.exe catalog create --designation "TJM Développement Go" --type service_delivery --unit day --price-cents 35000 --vat FR_2000
+```
+
+### Comptabilité : Livre des Recettes, Livre des Achats & Fournisseurs (`accounting`)
+```powershell
+# Ajouter une entrée au Livre des recettes (/incomeBook)
+./bin/abby.exe accounting incomes create --client "Dupont SARL" --ht-cents 100000 --ttc-cents 120000 --vat-cents 20000 --vat-id 1 --product-type 3
+
+# Créer un fournisseur puis enregistrer une dépense dans le Livre des achats (/v3/purchaseRegister)
+./bin/abby.exe accounting providers create --name "OVHcloud SAS" --siret "42476141900045"
+./bin/abby.exe accounting purchases create --provider-id <providerId> --label "Serveur Dédié" --amount-cents 5999 --vat-id 1 --account-number 606300
+
+# Consulter le plan comptable (/v2/accounting-accounts)
+./bin/abby.exe accounting accounts
+```
+
+### Requêtes HTTP brutes (`raw`)
+```powershell
+# Appeler n'importe quel endpoint de l'API Abby avec authentification Bearer automatique
+./bin/abby.exe raw GET /v2/company/me
+./bin/abby.exe raw GET /v2/billings -q page=1 -q limit=5 -q test=false
 ```

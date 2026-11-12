@@ -26,13 +26,18 @@ func NewRootCmd() *cobra.Command {
 		Long: `abby-cli permet de piloter la plateforme Abby (https://docs.abby.fr) depuis le terminal ou via un agent IA.
 
 Domaines couverts :
-  - auth      : Configuration de la clé API (Bearer suk-***) et vérification du compte (/v2/company/me)
-  - contacts  : Gestion des clients particuliers (/contacts, /contact/{id})
-  - orgs      : Gestion des clients professionnels / entreprises (/organizations, /organization/{id})
-  - invoices  : Cycle de vie complet des factures (/v2/billing/invoice/*, lignes, finalisation, paiement, avoir)
-  - estimates : Cycle de vie des devis et bons de commande (/v2/billing/estimate/*, signature, acomptes, facture de solde)
-  - assets    : Gestion des avoirs (/v2/billing/asset/*)
-  - billings  : Opérations transverses sur tous les documents de facturation (/v2/billings, PDF, email, archivage)`,
+  - auth          : Configuration de la clé API (Bearer suk-***) et vérification du compte (/v2/company/me)
+  - contacts      : Gestion des clients particuliers (/contacts, /contact/{id})
+  - orgs          : Gestion des clients professionnels / entreprises (/organizations, /organization/{id})
+  - invoices      : Cycle de vie complet des factures (/v2/billing/invoice/*, lignes, finalisation, paiement, avoir)
+  - estimates     : Cycle de vie des devis et bons de commande (/v2/billing/estimate/*, signature, acomptes, facture de solde)
+  - advances      : Gestion dédiée des factures d'acompte (/v2/billing/advance/*, montant, encaissement, annulation)
+  - assets        : Gestion des avoirs (/v2/billing/asset/*)
+  - billings      : Opérations transverses sur tous les documents de facturation (/v2/billings, PDF, email, archivage)
+  - catalog       : Catalogue de produits et services (/v2/catalog, /v2/catalog/product/*)
+  - accounting    : Comptabilité (Livre des recettes /incomeBook, Livre des achats /v3/purchaseRegister, Fournisseurs, Plan comptable)
+  - opportunities : CRM et opportunités commerciales (/v2/opportunity/*)
+  - raw           : Appel HTTP générique authentifié sur n'importe quel endpoint de l'API Abby`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
@@ -48,8 +53,13 @@ Domaines couverts :
 		newOrganizationsCmd(),
 		newInvoicesCmd(),
 		newEstimatesCmd(),
+		newAdvancesCmd(),
 		newAssetsCmd(),
 		newBillingsCmd(),
+		newCatalogCmd(),
+		newAccountingCmd(),
+		newOpportunitiesCmd(),
+		newRawCmd(),
 	)
 
 	return rootCmd

@@ -142,3 +142,38 @@ func (c *Client) MarkAdvanceAsPaid(ctx context.Context, advanceID string, dto Re
 	path := fmt.Sprintf("/v2/accounting-billing/advance/%s/reconciliate", url.PathEscape(advanceID))
 	return c.Do(ctx, http.MethodPost, path, nil, dto, nil)
 }
+
+// UpdateAdvanceGeneralInfo updates notes, terms, and payment methods on a draft advance invoice.
+// Endpoint: PATCH /v2/billing/advance/{advanceId}/general-informations
+func (c *Client) UpdateAdvanceGeneralInfo(ctx context.Context, advanceID string, dto UpdateGeneralInformationsDto) (*BillingDocument, error) {
+	var out BillingDocument
+	path := fmt.Sprintf("/v2/billing/advance/%s/general-informations", url.PathEscape(advanceID))
+	if err := c.Do(ctx, http.MethodPatch, path, nil, dto, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CancelAdvance cancels a finalized advance invoice by automatically creating and finalizing a credit note (avoir).
+// Endpoint: POST /v2/billing/advance/{advanceId}/cancel
+func (c *Client) CancelAdvance(ctx context.Context, advanceID string, archiveAfter bool) (*BillingDocument, error) {
+	var out BillingDocument
+	path := fmt.Sprintf("/v2/billing/advance/%s/cancel", url.PathEscape(advanceID))
+	dto := CancelBillingDto{WantArchiveAfterCancellation: archiveAfter}
+	if err := c.Do(ctx, http.MethodPost, path, nil, dto, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ActivateAdvanceOnlinePayment activates online payment on a finalized advance invoice.
+// Endpoint: PATCH /v2/billing/advance/{advanceId}/activate-online-payment
+func (c *Client) ActivateAdvanceOnlinePayment(ctx context.Context, advanceID string) (*BillingDocument, error) {
+	var out BillingDocument
+	path := fmt.Sprintf("/v2/billing/advance/%s/activate-online-payment", url.PathEscape(advanceID))
+	if err := c.Do(ctx, http.MethodPatch, path, nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+

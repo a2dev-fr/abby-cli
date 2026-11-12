@@ -196,6 +196,130 @@ func (p *Printer) PrintBillingDocument(doc *api.BillingDocument) error {
 	return nil
 }
 
+// PrintProducts prints a paginated list of catalog products in table or JSON mode.
+func (p *Printer) PrintProducts(res *api.PaginatedResponse[api.ProductDto]) error {
+	if p.Format == FormatJSON {
+		return p.PrintJSON(res)
+	}
+	items := res.EffectiveItems()
+	tw := tabwriter.NewWriter(p.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tRÉFÉRENCE\tDÉSIGNATION\tTYPE\tUNITÉ\tPRIX HT\tTVA\tPRIX TTC")
+	fmt.Fprintln(tw, "--\t---------\t-----------\t----\t-----\t-------\t---\t--------")
+	for _, pr := range items {
+		ht := pr.UnitPrice
+		if ht == 0 && pr.PriceWithoutTaxes != 0 {
+			ht = pr.PriceWithoutTaxes
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			pr.ID,
+			emptyDash(pr.Reference),
+			pr.Designation,
+			pr.Type,
+			pr.Unit,
+			FormatCents(ht, "EUR"),
+			pr.VatCode,
+			FormatCents(pr.PriceWithTaxes, "EUR"),
+		)
+	}
+	_ = tw.Flush()
+	fmt.Fprintf(p.Out, "\nTotal: %d produit(s) (Page %d/%d)\n", res.EffectiveTotal(), maxInt(res.Page, 1), maxInt(res.TotalPages, 1))
+	return nil
+}
+
+// PrintProduct prints a single catalog product in table or JSON mode.
+func (p *Printer) PrintProduct(pr *api.ProductDto) error {
+	if p.Format == FormatJSON {
+		return p.PrintJSON(pr)
+	}
+	fmt.Fprintf(p.Out, "Produit ID  : %s\n", pr.ID)
+	fmt.Fprintf(p.Out, "Désignation : %s\n", pr.Designation)
+	if pr.Reference != "" {
+		fmt.Fprintf(p.Out, "Référence   : %s\n", pr.Reference)
+	}
+	if pr.Description != "" {
+		fmt.Fprintf(p.Out, "Description : %s\n", pr.Description)
+	}
+	fmt.Fprintf(p.Out, "Type / Unité: %s / %s\n", pr.Type, pr.Unit)
+	fmt.Fprintf(p.Out, "Code TVA    : %s\n", pr.VatCode)
+	fmt.Fprintf(p.Out, "Prix HT     : %s (%d centimes)\n", FormatCents(pr.UnitPrice, "EUR"), pr.UnitPrice)
+	fmt.Fprintf(p.Out, "Prix TTC    : %s (%d centimes)\n", FormatCents(pr.PriceWithTaxes, "EUR"), pr.PriceWithTaxes)
+	return nil
+}
+
+// PrintPurchaseRegisterList prints a paginated list of purchase register entries (livre des achats).
+func (p *Printer) PrintPurchaseRegisterList(res *api.PaginatedResponse[api.PurchaseRegisterItem]) error {
+	if p.Format == FormatJSON {
+		return p.PrintJSON(res)
+	}
+	items := res.EffectiveItems()
+	tw := tabwriter.NewWriter(p.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tDATE\tLIBELLÉ\tRÉFÉRENCE\tFOURNISSEUR\tMONTANT TTC\tTVA")
+	fmt.Fprintln(tw, "--\t----\t-------\t---------\t-----------\t-----------\t---")
+	for _, it := range items {
+		providerName := it.ThirdPartyID
+		if it.ThirdParty != nil && it.ThirdParty.Name != "" {
+			providerName = it.ThirdParty.Name
+		}
+		dateStr := it.ValueDate
+		if len(dateStr) >= 10 {
+			dateStr = dateStr[:10]
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			it.ID,
+			emptyDash(dateStr),
+			it.Label,
+			emptyDash(it.Reference),
+			emptyDash(providerName),
+			FormatCents(it.Amount, "EUR"),
+			FormatCents(it.VatAmount, "EUR"),
+		)
+	}
+	_ = tw.Flush()
+	fmt.Fprintf(p.Out, "\nTotal: %d achat(s) (Page %d/%d)\n", res.EffectiveTotal(), maxInt(res.Page, 1), maxInt(res.TotalPages, 1))
+	return nil
+}
+
+// PrintProviders prints a paginated list of suppliers (providers).
+func (p *Printer) PrintProviders(res *api.PaginatedResponse[api.ProviderDto]) error {
+	if p.Format == FormatJSON {
+		return p.PrintJSON(res)
+	}
+	items := res.EffectiveItems()
+	tw := tabwriter.NewWriter(p.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "ID\tNOM\tSIRET\tTVA\tVILLE\tTÉLÉPHONE")
+	fmt.Fprintln(tw, "--\t---\t-----\t---\t-----\t---------")
+	for _, pr := range items {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			pr.ID,
+			pr.Name,
+			emptyDash(pr.Siret),
+			emptyDash(pr.VatNumber),
+			emptyDash(pr.City),
+			emptyDash(pr.Phone),
+		)
+	}
+	_ = tw.Flush()
+	fmt.Fprintf(p.Out, "\nTotal: %d fournisseur(s) (Page %d/%d)\n", res.EffectiveTotal(), maxInt(res.Page, 1), maxInt(res.TotalPages, 1))
+	return nil
+}
+
+// PrintAccountingAccounts prints the chart of accounts in table or JSON mode.
+func (p *Printer) PrintAccountingAccounts(accounts []api.AccountingAccountDto) error {
+	if p.Format == FormatJSON {
+		return p.PrintJSON(accounts)
+	}
+	tw := tabwriter.NewWriter(p.Out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "NUMÉRO\tINTITULÉ\tDESCRIPTION\tPERSONNEL\tID")
+	fmt.Fprintln(tw, "------\t--------\t-----------\t---------\t--")
+	for _, a := range accounts {
+		fmt.Fprintf(tw, "%d\t%s\t%s\t%v\t%s\n",
+			a.Number, a.Name, emptyDash(a.Description), a.IsPersonal, a.ID)
+	}
+	_ = tw.Flush()
+	fmt.Fprintf(p.Out, "\nTotal: %d compte(s) comptable(s)\n", len(accounts))
+	return nil
+}
+
 // FormatCents formats an integer amount in cents into a readable decimal currency string.
 func FormatCents(cents int64, currency string) string {
 	if currency == "" {

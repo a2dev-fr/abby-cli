@@ -85,9 +85,23 @@ Le devis **doit être signé** (`state: "signed"`).
 # Ou acompte d'un montant fixe HT en centimes (ex: 350,00 € HT = 35000 centimes)
 ./bin/abby.exe estimates create-advance <estimateId> --amount-cents 35000 -o json
 ```
-L'acompte est créé en brouillon (`type: "advance"`). Pour le finaliser :
+L'acompte est créé en brouillon (`type: "advance"`). Vous pouvez le piloter via la commande dédiée `abby advances` :
 ```powershell
-./bin/abby.exe billings finalize <advanceId> -o json
+# Lister ou inspecter un acompte
+./bin/abby.exe advances list -o json
+./bin/abby.exe advances get <advanceId> -o json
+
+# Modifier le montant ou le pourcentage d'un acompte brouillon
+./bin/abby.exe advances update-amount <advanceId> --percentage 40 -o json
+
+# Finaliser l'acompte
+./bin/abby.exe advances finalize <advanceId> -o json
+
+# Marquer l'acompte comme payé (POST /v2/accounting-billing/advance/{advanceId}/reconciliate)
+./bin/abby.exe advances mark-paid <advanceId> --method "transfer" -o json
+
+# Annuler un acompte finalisé (génère automatiquement un avoir)
+./bin/abby.exe advances cancel <advanceId> -o json
 ```
 
 ### 6. Générer la facture finale de solde (`create-final-invoice`)
@@ -96,3 +110,16 @@ Depuis un devis signé, génère la facture finale en déduisant automatiquement
 ./bin/abby.exe estimates create-final-invoice <estimateId> -o json
 ```
 Vous pouvez ensuite finaliser et encaisser cette facture via `abby invoices finalize <invoiceId>` et `abby invoices mark-paid <invoiceId>`.
+
+---
+
+## 7. Opportunités Commerciales / CRM (`abby opportunities`)
+
+Vous pouvez également gérer les opportunités du pipeline CRM (`/v2/opportunity`) :
+```powershell
+# Lister les colonnes / catégories d'opportunités
+./bin/abby.exe opportunities categories -o json
+
+# Créer une opportunité pour un client
+./bin/abby.exe opportunities create --name "Refonte E-Commerce" --customer-id <customerId> --category-id <categoryId> --amount-cents 200000 --due-date "2026-12-31" -o json
+```
