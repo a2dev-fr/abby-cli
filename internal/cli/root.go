@@ -22,8 +22,9 @@ var (
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "abby",
-		Short: "CLI officiel en Go pour piloter l'API REST Abby (Facturation & Clients)",
-		Long: `abby-cli permet de piloter la plateforme Abby (https://docs.abby.fr) depuis le terminal ou via un agent IA.
+		Short: "Client CLI en Go (non-officiel) pour piloter l'API REST Abby",
+		Long: `abby-cli est un client communautaire open-source permettant de piloter l'API publique d'Abby (https://docs.abby.fr) depuis le terminal ou via un agent IA.
+(Projet indépendant, non affilié à Abby SAS).
 
 Domaines couverts :
   - auth          : Configuration de la clé API (Bearer suk-***) et vérification du compte (/v2/company/me)

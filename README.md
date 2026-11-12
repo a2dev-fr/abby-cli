@@ -1,6 +1,13 @@
 # Abby CLI (`abby-cli`) — Client Go & Skills IA pour l'API REST Abby
 
-`abby-cli` est une application en ligne de commande écrite en **Go** permettant de piloter l'**API REST v2 d'Abby** ([docs.abby.fr/api/factures](https://docs.abby.fr/api/factures)), accompagnée d'un jeu de **Skills et Règles modulaires** (`.agents/`) permettant à un agent IA de gérer de bout en bout les clients, devis, acomptes, factures et avoirs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Go Version](https://img.shields.io/badge/Go-1.22%2B-00ADD8?logo=go)](https://go.dev/)
+
+`abby-cli` est une application en ligne de commande open-source écrite en **Go** permettant de piloter l'**API REST publique d'Abby** ([docs.abby.fr](https://docs.abby.fr/api/factures)), accompagnée d'un jeu de **Skills et Règles modulaires** (`.agents/`) permettant à un agent IA de gérer les clients, devis, acomptes, factures, avoirs, produits du catalogue et livres comptables.
+
+> **Avis de non-affiliation & Avertissement** :
+> - **Projet communautaire non officiel** : `abby-cli` est un projet open-source indépendant et n'est ni affilié, ni maintenu, ni sponsorisé, ni approuvé par **Abby SAS**. La marque « Abby » appartient à son propriétaire respectif.
+> - **Responsabilité comptable et fiscale** : Ce logiciel est fourni « tel quel » (*AS IS*), sans garantie d'aucune sorte. Certaines actions (notamment la finalisation de factures/avoirs conformément à la législation anti-fraude TVA, l'envoi d'emails ou l'écriture dans les livres comptables) sont **irréversibles**. Vérifiez toujours vos documents en brouillon avant de les finaliser ; vous demeurez seul responsable des opérations effectuées via votre clé API sur votre compte Abby.
 
 ---
 
@@ -165,3 +172,18 @@ $env:ABBY_API_KEY = "suk-votre_cle_api"
 ./bin/abby.exe raw GET /v2/company/me
 ./bin/abby.exe raw GET /v2/billings -q page=1 -q limit=5 -q test=false
 ```
+
+---
+
+## Tests Unitaires
+
+```powershell
+go test -v -cover ./...
+```
+
+---
+
+## Licence
+
+Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](./LICENSE) pour plus de détails.
+
